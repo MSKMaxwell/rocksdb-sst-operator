@@ -18,6 +18,12 @@ struct Slice
         memcpy(this->data.get(), p, size);
         this->size = size;
     }
+    Slice (std::string str)
+    {
+        this->data = std::make_unique<char[]>(str.size());
+        memcpy(this->data.get(), str.c_str(), str.size());
+        this->size = str.size();
+    }
     Slice(uint32_t size)
     {
         this->data = std::make_unique<char[]>(size);
@@ -35,7 +41,7 @@ struct Slice
     {
         return std::string(this->data.get(), this->size);
     }
-    size_t Slice::difference_offset(const Slice &b) const
+    size_t difference_offset(const Slice &b) const
     {
         size_t off = 0;
         const size_t len = (size < b.size) ? size : b.size;
@@ -204,10 +210,17 @@ struct DataBlock
     uint32_t restart_point_num, entry_size, kv_size;
     std::vector<uint32_t> restart_point;
 
-    void putkv(Slice &key, Slice &value)
+    DataBlock()
+    {
+        kv_size = 0;
+        entry_size = 0;
+    }
+
+    void putkv(Slice key, Slice value)
     {
         kv_size += key.size + value.size;
-        kv.push_back(std::make_pair(key, value));
+        kv.push_back(std::make_pair(std::move(key), std::move(value)));
+        // kv.push_back(std::make_pair(key, value));
         ++entry_size;
     }
 
@@ -250,7 +263,51 @@ struct DataBlock
         }
     }
 
-    void put()
+    // write the data block to fd at given offset
+    // return the offset of next block
+    ssize_t put_to_fd(int fd, ssize_t offset)
+    {
+        size_t buf_size = estimated_size() * 2;
+        // write the first kv
+        Buf buf(buf_size);
+        // shared  | unshard | value | key | value
+        buf.p = EncodeVarint32(buf.p, 0);
+        buf.p = EncodeVarint32(buf.p, kv[0].first.size);
+        buf.p = EncodeVarint32(buf.p, kv[0].second.size);
+        buf.p = PutBytesPtr(buf.p, kv[0].first.get(), kv[0].first.size);
+        buf.p = PutBytesPtr(buf.p, kv[0].second.get(), kv[0].second.size);
+        // write the rest kv
+        unsigned restart_num = 1;
+        restart_point.push_back(offset);
+        for (uint32_t i = 1; i < kv.size(); ++i)
+        {
+            size_t shared_key_length, unshared_key_length;
+            if (i % restart_interval == 0)
+            {
+                restart_point.push_back(buf.p - buf.buffer.get() + offset);
+                ++restart_num;
+                shared_key_length = 0;
+                unshared_key_length = kv[i].first.size;
+            }
+            else
+            {
+                shared_key_length = kv[i].first.difference_offset(kv[i - 1].first);
+                unshared_key_length = kv[i].first.size - shared_key_length;
+            }
+            buf.p = EncodeVarint32(buf.p, shared_key_length);
+            buf.p = EncodeVarint32(buf.p, unshared_key_length);
+            buf.p = EncodeVarint32(buf.p, kv[i].second.size);
+            buf.p = PutBytesPtr(buf.p, kv[i].first.get() + shared_key_length, unshared_key_length);
+            buf.p = PutBytesPtr(buf.p, kv[i].second.get(), kv[i].second.size);
+        }
+        // write the restart point array
+        for(uint32_t i = 0; i < restart_point.size(); ++i){
+            buf.p = PutBytesPtr(buf.p, reinterpret_cast<char *>(&restart_point[i]), sizeof(uint32_t));
+        }
+        buf.p = PutBytesPtr(buf.p, reinterpret_cast<char *>(&restart_num), sizeof(uint32_t));
+        pwrite(fd, buf.buffer.get(), buf.p - buf.buffer.get(), offset);
+        return offset + buf.p - buf.buffer.get();
+    }
 
     ssize_t estimated_size()
     {

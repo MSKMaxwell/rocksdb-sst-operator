@@ -13,9 +13,20 @@ void raw_code_read_sst();
 #define NEW
 int main()
 {
-    SST sst("full.sst");
-    sst.decode();
-    
+    // SST sst("full.sst");
+    // sst.decode();
+    // for (int i = 0; i < sst.data_block[0].kv.size(); i++)
+    // {
+    //     std::cout << sst.data_block[0].kv[i].first.toString() << " " << sst.data_block[0].kv[i].second.toString() << std::endl;
+    // }
+    DataBlock datablock;
+    for(int i = 1;i<50;++i){
+        std::string key = std::to_string(i),value("value");
+        value+=key;
+        datablock.putkv(Slice(key),Slice(value));
+    }
+    int fd = open("write_datablock_test", O_WRONLY | O_CREAT, 0644);
+    datablock.put_to_fd(fd, 0);
     return 0;
 }
 
@@ -33,9 +44,9 @@ void newApproach()
     {
         DataBlock data_block;
         data_block.get(fd, data_block_handle, data_block_buf);
-        for (int i = 0; i < data_block.size; ++i)
+        for (auto &kv : data_block.kv)
         {
-            std::cout << data_block.keys[i].toString() << " " << data_block.values[i].toString() << std::endl;
+            std::cout << kv.first.toString() << " " << kv.second.toString() << std::endl;
         }
     }
 }

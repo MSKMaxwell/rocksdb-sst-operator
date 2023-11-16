@@ -51,6 +51,13 @@
         "new": "cpp",
         "stdexcept": "cpp",
         "typeinfo": "cpp",
-        "cassert": "cpp"
+        "cassert": "cpp",
+        "condition_variable": "cpp",
+        "cstring": "cpp",
+        "list": "cpp",
+        "map": "cpp",
+        "unordered_set": "cpp",
+        "mutex": "cpp",
+        "thread": "cpp"
     }
 }

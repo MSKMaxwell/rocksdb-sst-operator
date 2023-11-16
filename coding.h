@@ -48,6 +48,19 @@ char *EncodeVarint64(char *dst, uint64_t v)
     return reinterpret_cast<char *>(ptr);
 }
 
+char *EncodeVarint32(char *dst, uint32_t v)
+{
+    static const unsigned int B = 128;
+    unsigned char *ptr = reinterpret_cast<unsigned char *>(dst);
+    while (v >= B)
+    {
+        *(ptr++) = (v & (B - 1)) | B;
+        v >>= 7;
+    }
+    *(ptr++) = static_cast<unsigned char>(v);
+    return reinterpret_cast<char *>(ptr);
+}
+
 char *GetVarint32Ptr(char *p, char *limit, uint32_t *value)
 {
     uint32_t result = 0;
