@@ -5,6 +5,9 @@
 
 // use std=c++17
 
+// TODO
+// use trival memory management
+// disable c++ special functions
 int main()
 {
     // read a sst and write it back - test passed
