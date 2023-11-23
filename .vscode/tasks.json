@@ -9,8 +9,10 @@
 				"-fdiagnostics-color=always",
 				"-g",
 				"${file}",
+				"-I",
+				"/home/msk415/newrocksdb/sst_decoder_demo/include",
 				"-o",
-				"${fileDirname}/${fileBasenameNoExtension}",
+				"/home/msk415/newrocksdb/sst_decoder_demo/build/${fileBasenameNoExtension}",
 				"-std=c++17",
 			],
 			"options": {

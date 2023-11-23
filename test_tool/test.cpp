@@ -6,8 +6,8 @@
 using namespace std;
 int main()
 {
-    const uint8_t data[5] = {
-        0xE4, 0xF8, 0xCA, 0x01, 0x1F};
+    const uint8_t data[4] = {
+        0xC3, 0xBF, 0xA1, 0x01};
     char *p = (char *)data, *limit = (char *)data + sizeof(data);
     while (p < limit)
     {
@@ -15,6 +15,8 @@ int main()
         p = GetVarint64Ptr(p, limit, &temp);
         cout << temp << endl;
     }
+    char t = 0x3a;
+    cout << t << endl;
     return 0;
 }
 /*

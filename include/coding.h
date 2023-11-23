@@ -103,6 +103,8 @@ char* PutBytesPtr(char* p, char* value, uint32_t size){
     return reinterpret_cast<char *>(p);
 }
 
+uint32_t Lower32of64(uint64_t v) { return static_cast<uint32_t>(v); }
+
 // not used in this code, for debug only
 
 char toHex(unsigned char v)
