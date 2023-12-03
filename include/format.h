@@ -91,12 +91,6 @@ struct Buf
     }
 };
 
-// struct Index_Handle
-// {
-//     uint64_t offset;
-//     uint64_t size;
-// };
-
 struct BlockHandle
 {
     uint64_t offset;
@@ -139,15 +133,16 @@ Version@0中的Footer没有版本号，需要从magic number是否lagacy推测
 - newer magic number (8 bytes)
 */
 
-// const uint64_t kMagicNumber = 0x88e241b785f4cff7;
 struct Footer
 {
     static const uint64_t kMagicNumber = 9863518390377041911ULL;
     static const uint32_t kExtendedMagicNumber = 7995454;
     static const uint64_t kNewFooterSize = 53;
     static const uint64_t kXXH3checksum = 4;
+
     BlockHandle metaindex_handle, index_handle;
     uint32_t version = 5;
+
     void get(int fd, uint64_t sst_file_size, Buf &buf)
     {
         // assume version 1-5
@@ -164,7 +159,8 @@ struct Footer
         buf.p = GetVarint64Ptr(buf.p, buf.limit, &index_handle.offset);
         buf.p = GetVarint64Ptr(buf.p, buf.limit, &index_handle.size);
     }
-    size_t put_to_fd(int fd, size_t offset)
+
+    uint64_t put_to_fd(int fd, size_t offset)
     {
         // assume version 1-5
         size_t buf_size = kNewFooterSize;

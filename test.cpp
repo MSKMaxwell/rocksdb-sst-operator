@@ -6,8 +6,8 @@
 using namespace std;
 int main()
 {
-    const uint8_t data[4] = {
-        0xC3, 0xBF, 0xA1, 0x01};
+    uint8_t data[5] = {
+        0x80, 0xCA, 0x0A, 0xD5, 0x0A};
     char *p = (char *)data, *limit = (char *)data + sizeof(data);
     while (p < limit)
     {

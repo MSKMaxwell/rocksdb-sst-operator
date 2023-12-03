@@ -3,99 +3,24 @@
 
 #include <iostream>
 
-/*
-properties:
-  # data blocks: 776
-  # entries: 120099
-  # deletions: 2684
-  # merge operands: 0
-  # range deletions: 1
-  raw key size: 1570648
-  raw average key size: 13.077944
-  raw value size: 1650493
-  raw average value size: 13.742771
-  data block size: 3162099
-  index block size (user-key? 1, delta-value? 1): 12775
-  filter block size: 150149
-  # entries for filter: 120098
-  (estimated) table size: 3325023
-
-//   filter policy name: bloomfilter
-//   prefix extractor name: nullptr
-//   column family ID: 0
-//   column family name: default
-//   comparator name: leveldb.BytewiseComparator
-//   user defined timestamps persisted: true
-//   merge operator name: nullptr
-//   property collectors names: []
-//   SST file compression algo: NoCompression
-//   SST file compression options: window_bits=-14; level=32767; strategy=0; max_dict_bytes=0; zstd_max_train_bytes=0; enabled=0; max_dict_buffer_bytes=0; use_zstd_dict_trainer=1;
-
-  creation time: 1699587035
-  time stamp of earliest key: 1699587035
-  file creation time: 1699587035
-  slow compression estimated data size: 0
-  fast compression estimated data size: 0
-
-//   DB identity: c3886f16-fcd3-405b-9282-af032ba89371
-  DB session identity: ACZ8DF4QRBU5UQ3AU7F2
-//   DB host id: DESKTOP-I2II89E
-  original file number: 9
-  unique ID: 3E867BBFEFAD8263-31E8599A8DC4E3BE
-  Sequence number to time mapping:
-
-  **************************
-rocksdb.block.based.table.index.type
-rocksdb.block.based.table.prefix.filtering 0
-rocksdb.block.based.table.whole.key.filtering 1
-rocksdb.column.family.id ����
-rocksdb.comparator leveldb.BytewiseComparator
-rocksdb.compression NoCompression
-rocksdb.compression_options window_bits=-14; level=32767; strategy=0; max_dict_bytes=0; zstd_max_train_bytes=0; enabled=0; max_dict_buffer_bytes=0; use_zstd_dict_trainer=1;
-rocksdb.creating.db.identity SST Writer
-rocksdb.creating.host.identity DESKTOP-I2II89E
-rocksdb.creating.session.identity W0OUUKKECST2N8Y4YLHL
-rocksdb.creation.time
-rocksdb.data.size ÿ�
-rocksdb.deleted.keys
-rocksdb.external_sst_file.global_seqno
-rocksdb.external_sst_file.version
-rocksdb.filter.size
-rocksdb.fixed.key.length
-rocksdb.format.version
-rocksdb.index.key.is.user.key
-rocksdb.index.size �Q
-rocksdb.index.value.is.delta.encoded
-rocksdb.merge.operands
-rocksdb.merge.operator nullptr
-rocksdb.num.data.blocks �
-rocksdb.num.entries ��
-rocksdb.num.filter_entries
-rocksdb.num.range-deletions
-rocksdb.oldest.key.time
-rocksdb.original.file.number
-rocksdb.prefix.extractor.name nullptr
-rocksdb.property.collectors []
-rocksdb.raw.key.size ��N
-rocksdb.raw.value.size ��T
-rocksdb.tail.start.offset ÿ�
-*/
 
 struct SST
 {
   int fd, file_size;
   char file_name[256];
-  Footer footer;
-  IndexBlock index_block;
-  MetaindexBlock metaindex_block;
+
   std::vector<DataBlock> data_block;
+  IndexBlock index_block;
   DataBlock properties;
+  MetaindexBlock metaindex_block;
+  Footer footer;
 
   // BlockHandle
-  uint64_t index_block_offset, index_block_size, properties_block_offset, properties_size, metaindex_block_offset, metaindex_block_size;
+  BlockHandle index_block_handle, properties_block_handle, metaindex_block_handle;
 
   // properties variables
-  uint64_t data_blocks, entried, deletions, merge_oprands, range_deletions, raw_key_size, raw_value_size, data_block_size, /*index_block_size,*/ filter_block_size, entries_for_filter, table_size;
+  uint64_t data_blocks, entried, deletions, merge_oprands, range_deletions, raw_key_size, raw_value_size, data_block_size, index_block_size, filter_block_size, entries_for_filter, table_size;
+
   SST() {}
   SST(char *file_name)
   {
@@ -106,6 +31,7 @@ struct SST
     // init properties variables
     data_blocks = entried = deletions = merge_oprands = range_deletions = raw_key_size = raw_value_size = data_block_size = index_block_size = filter_block_size = entries_for_filter = table_size = 0;
   }
+
   void insert(Slice key, Slice value)
   {
     if (data_block.size() == 0 || (data_block.back().estimated_size() + key.size + value.size > 4096 && data_block.back().entry_size > 0))
@@ -114,6 +40,7 @@ struct SST
     }
     data_block.back().insert(std::move(key), std::move(value));
   }
+
   void decode()
   {
     Buf buf;
@@ -136,17 +63,17 @@ struct SST
     {
       data_block[i].get(fd, index_block.kv[i].second, buf);
     }
-    // properties.get(fd, footer.metaindex_handle, buf);
   }
+
   void encode(int newfd)
   {
-    // TODO DEBUG
     uint64_t offset = 0;
     uint64_t current_data_block_offset, current_data_block_size;
     for (int i = 0; i < data_block.size(); i++)
     {
       current_data_block_offset = offset;
       offset = data_block[i].put_to_fd(newfd, offset);
+
       current_data_block_size = offset - current_data_block_offset - 5;
       data_block_size += current_data_block_size;
       index_block.put_a_kv(std::move(data_block[i].kv.back().first), BlockHandle(current_data_block_offset, current_data_block_size));
@@ -156,24 +83,24 @@ struct SST
       raw_value_size += data_block[i].value_size;
     }
 
-    index_block_offset = offset;
+    index_block_handle.offset = offset;
     offset = index_block.put_to_fd(newfd, offset);
-    index_block_size = offset - index_block_offset - 5;
+    index_block_handle.size = offset - index_block_handle.offset - 5;
 
     initProperties();
-    properties_block_offset = offset;
+    properties_block_handle.offset = offset;
     offset = properties.put_to_fd(newfd, offset);
-    properties_size = offset - properties_block_offset - 5;
+    properties_block_handle.size = offset - properties_block_handle.offset - 5;
 
-    metaindex_block_offset = offset;
+    metaindex_block_handle.offset = offset;
     initMetaindexBlock();
     offset = metaindex_block.put_to_fd(newfd, offset);
-    metaindex_block_size = offset - metaindex_block_offset - 5;
+    metaindex_block_handle.size = offset - metaindex_block_handle.offset - 5;
 
-    footer.index_handle.offset = index_block_offset;
-    footer.index_handle.size = index_block_size;
-    footer.metaindex_handle.offset = metaindex_block_offset;
-    footer.metaindex_handle.size = metaindex_block_size;
+    footer.index_handle.size = index_block_handle.size;
+    footer.index_handle.offset = index_block_handle.offset;
+    footer.metaindex_handle.size = metaindex_block_handle.size;
+    footer.metaindex_handle.offset = metaindex_block_handle.offset;
 
     offset = footer.put_to_fd(newfd, offset);
   }
@@ -181,7 +108,7 @@ struct SST
   void initMetaindexBlock()
   {
     metaindex_block.kv.clear();
-    metaindex_block.insert(Slice("rocksdb.properties"), BlockHandle(properties_block_offset, properties_size));
+    metaindex_block.insert(Slice("rocksdb.properties"), properties_block_handle);
   }
 
   // ugly

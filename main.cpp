@@ -6,37 +6,21 @@
 // use std=c++17
 
 // TODO
-// use trival memory management
-// disable c++ special functions
+// given a fixed-size on-board memory
+// but sst file could be pretty large according to its level
+// how to take advantage of the memory to encode different parts of a sst file
+
+// input: a kv-pair from hls::stream
+// output: encode different parts of a sst file in on-board memory, finally concatenate a sst file
 int main()
 {
-    // read a sst and write it back - test passed
-    // int fd = open("write_sst_test", O_WRONLY | O_CREAT, 0644);
-    // SST sst1("test.sst");
-    // sst1.decode();
-    // sst1.encode(fd);
-
-    // TODO
-    // put in key-value pairs and write it back - test
-    int fd = open("write_sst_test", O_WRONLY | O_CREAT, 0644);
-    SST sst3;
-    for(int i = 0; i < 1000; i++)
+    int fd = open("test_write.sst", O_WRONLY | O_CREAT, 0644);
+    SST sst1;
+    for(int i = 0; i < 100; i++)
     {
-        std::string temp("test_data");
-        sst3.insert(std::to_string(i), temp + std::to_string(i));
+        sst1.insert(Slice(std::to_string(i)), Slice(std::string("test") + std::to_string(i)));
     }
-    sst3.encode(fd);
-
-    SST sst2("write_sst_test");
-    sst2.decode();
-    freopen("output.txt", "w", stdout);
-    for (int i = 0; i < sst2.index_block.kv.size(); i++)
-    {
-        for (int j = 0; j < sst2.data_block[i].kv.size(); j++)
-        {
-            std::cout << sst2.data_block[i].kv[j].first.toString() << " " << sst2.data_block[i].kv[j].second.toString() << std::endl;
-        }
-    }
+    sst1.encode(fd);
     return 0;
 }
 

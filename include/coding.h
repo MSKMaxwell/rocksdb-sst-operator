@@ -103,6 +103,15 @@ char* PutBytesPtr(char* p, char* value, uint32_t size){
     return reinterpret_cast<char *>(p);
 }
 
+char* PutBytesPtr(char* p,const char* value, uint32_t size){
+    for (uint32_t i = 0; i < size; i++)
+    {
+        *(reinterpret_cast<unsigned char *>(p)) = value[i];
+        p++;
+    }
+    return reinterpret_cast<char *>(p);
+}
+
 uint32_t Lower32of64(uint64_t v) { return static_cast<uint32_t>(v); }
 
 // not used in this code, for debug only
